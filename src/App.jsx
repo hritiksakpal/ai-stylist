@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-
+CUELINKS_PUB_ID
 function App() {
   // Biometric Profile states
   const [profile, setProfile] = useState(null)
@@ -44,7 +44,7 @@ function App() {
   const WORKER_URL = "https://aistylist.hritik-sk01.workers.dev"
 
   // Cuelinks Publisher ID wrapper
-  const CUELINKS_PUB_ID = ""
+  const CUELINKS_PUB_ID = "330837"
 
   const formatAffiliateLink = (url) => {
     if (!url) return '#'
