@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-CUELINKS_PUB_ID
+
 function App() {
   // Biometric Profile states
   const [profile, setProfile] = useState(null)
@@ -8,30 +8,28 @@ function App() {
   const [skinTone, setSkinTone] = useState('Wheatish')
   const [bodyType, setBodyType] = useState('Average')
 
-  // Theme state ('dark' | 'light')
+  // Theme & Views
   const [theme, setTheme] = useState('dark')
+  const [viewMode, setViewMode] = useState('swipe') // 'swipe' | 'grid' | 'closet'
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [swipeAnim, setSwipeAnim] = useState('') 
+  const [savedCloset, setSavedCloset] = useState([])
+  const [showHeartPopup, setShowHeartPopup] = useState(false)
 
-  // Discovery & Filter states
+  // Search & Batch State
   const [occasion, setOccasion] = useState('Diwali / Festival')
   const [outfitFormat, setOutfitFormat] = useState('All Formats (Mix)')
   const [budget, setBudget] = useState('3000')
   const [comboCount, setComboCount] = useState(5)
   const [batchOffset, setBatchOffset] = useState(0)
 
-  // Habit-Forming View & Closet states
-  const [viewMode, setViewMode] = useState('swipe') // 'swipe' | 'grid' | 'closet'
-  const [activeIndex, setActiveIndex] = useState(0)
-  const [swipeAnim, setSwipeAnim] = useState('') // 'left' | 'right' | ''
-  const [savedCloset, setSavedCloset] = useState([])
-  const [showHeartPopup, setShowHeartPopup] = useState(false)
-
-  // UI & Loading states
+  // Loaders & Results
   const [loading, setLoading] = useState(false)
   const [interstitialStep, setInterstitialStep] = useState(0)
   const [loadingMore, setLoadingMore] = useState(false)
   const [combos, setCombos] = useState([])
 
-  // Virtual Try-On Modal states
+  // Try-On & Share Modals
   const [aiModalData, setAiModalData] = useState(null)
   const [generatingSnapshot, setGeneratingSnapshot] = useState(false)
   const [copiedState, setCopiedState] = useState('')
@@ -40,16 +38,19 @@ function App() {
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
 
-  // Cloudflare Worker URL
+  // Cloudflare Worker Endpoint
   const WORKER_URL = "https://aistylist.hritik-sk01.workers.dev"
 
-  // Cuelinks Publisher ID wrapper
-  const CUELINKS_PUB_ID = "332270"
+  // ============================================================================
+  // CUELINKS MONETIZATION CONFIGURATION
+  // ============================================================================
+  const CUELINKS_CID = "332270"
 
   const formatAffiliateLink = (url) => {
     if (!url) return '#'
-    if (!CUELINKS_PUB_ID) return url
-    return `https://linksredirect.com/?pub_id=${CUELINKS_PUB_ID}&source=linkkit&url=${encodeURIComponent(url)}`
+    if (!CUELINKS_CID) return url
+    // Uses Cuelinks official LinkKit redirect engine (with cid & subid tracking)
+    return `https://linksredirect.com/?cid=${CUELINKS_CID}&source=linkkit&subid=styleai_${encodeURIComponent(occasion.toLowerCase().replace(/[^a-z0-9]/g, ''))}&url=${encodeURIComponent(url)}`
   }
 
   // Load persistent profile, theme, and saved closet
@@ -73,7 +74,7 @@ function App() {
     localStorage.setItem('desiThemeV5', next)
   }
 
-  // Adaptive Design Tokens
+  // Design Tokens
   const t = theme === 'dark' ? {
     bg: '#09090b', card: '#141418', inner: '#1c1c22', border: '#2a2a32',
     text: '#fafafa', muted: '#a1a1aa', accent: '#f43f5e'
@@ -95,7 +96,6 @@ function App() {
     setAiModalData(null)
   }
 
-  // Toggle Save Look to Closet
   const toggleSaveLook = (combo) => {
     const exists = savedCloset.some(c => c.look_name === combo.look_name)
     let updated
@@ -236,14 +236,14 @@ function App() {
     touchStartY.current = null
   }
 
-  // Viral Share to WhatsApp, Telegram, etc.
+  // Viral Share to WhatsApp, Telegram, Instagram with Cuelinks monetized URLs
   const shareComboToSocial = async (combo) => {
     const items = combo.items || []
     const lines = items.map((it) =>
       `• ${it.part} (${it.color}): ${formatAffiliateLink(it.buy_link)}`
     ).join('\n')
 
-    const shareText = `🔥 Check out this curated ${combo.ensemble_type || 'look'} for ${occasion} (${combo.total_price_range || `Under ₹${budget}`}):\n\n"${combo.look_name}"\n${combo.style_tip ? `Stylist Note: ${combo.style_tip}\n` : ''}\nShop the pieces:\n${lines}\n\nStyled 100% free with StyleAI!`
+    const shareText = `🔥 Check out this curated ${combo.ensemble_type || 'look'} for ${occasion} (${combo.total_price_range || `Under ₹${budget}`}):\n\n"${combo.look_name}"\n${combo.style_tip ? `Stylist Note: ${combo.style_tip}\n` : ''}\nShop the individual pieces:\n${lines}\n\nStyled 100% free with StyleAI!`
 
     if (navigator.share) {
       try {
@@ -257,13 +257,12 @@ function App() {
 
     try {
       await navigator.clipboard.writeText(shareText)
-      alert("Look details & affiliate product links copied to clipboard! Paste directly into WhatsApp or Instagram.")
+      alert("Look details & Cuelinks monetized links copied! Paste directly into WhatsApp, Telegram, or Instagram.")
     } catch (e) {
-      alert("Unable to copy automatically.")
+      alert("Unable to copy automatically. Please open the look to view links.")
     }
   }
 
-  // Master Prompt for BYO-AI Try-On
   const buildMasterPrompts = (combo) => {
     const items = combo.items || []
     const cleanName = (str) => (str || '').replace(/^Men\s+|^Women\s+|'s\s+/i, '').trim()
@@ -311,7 +310,6 @@ STRICT QUALITY & COLOR CONSTRAINTS:
     return { masterPrompt, shortUrlPrompt }
   }
 
-  // Stitched Canvas Card Generator
   const loadCanvasImage = (src) => {
     return new Promise((resolve) => {
       const img = new Image()
@@ -544,7 +542,7 @@ STRICT QUALITY & COLOR CONSTRAINTS:
   }
 
   // ============================================================================
-  // REUSABLE 100% RESPONSIVE OUTFIT CARD COMPONENT
+  // REUSABLE OUTFIT CARD (100% Fluid & Mobile-Responsive)
   // ============================================================================
   const renderOutfitCard = (combo, idx, isDeckCard = false) => {
     if (!combo) return null
@@ -557,12 +555,11 @@ STRICT QUALITY & COLOR CONSTRAINTS:
         onTouchEnd={isDeckCard ? onTouchEnd : undefined}
         style={{
           width: '100%',
-          maxWidth: '100%',
           boxSizing: 'border-box',
           background: t.card,
-          border: `1px solid ${t.border}`,
-          borderRadius: '18px',
-          padding: '14px',
+          border: combo.is_sponsored ? '1px solid #f59e0b66' : `1px solid ${t.border}`,
+          borderRadius: '20px',
+          padding: '16px',
           boxShadow: theme === 'dark' ? '0 16px 40px rgba(0,0,0,0.5)' : '0 10px 30px rgba(0,0,0,0.06)',
           transition: 'transform 0.16s ease, opacity 0.16s ease',
           transform: isDeckCard && swipeAnim === 'left' ? 'translateX(-24px) scale(0.98)' : isDeckCard && swipeAnim === 'right' ? 'translateX(24px) scale(0.98)' : 'none',
@@ -570,17 +567,23 @@ STRICT QUALITY & COLOR CONSTRAINTS:
           overflow: 'hidden'
         }}
       >
-        {/* Badges Row - Responsive Flex-Wrap */}
+        {/* Badges Bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap', flex: '1 1 auto', minWidth: '0' }}>
-            <span style={{ background: '#10b98120', color: '#10b981', border: '1px solid #10b98140', padding: '3px 8px', borderRadius: '99px', fontSize: '10.5px', fontWeight: '700', whiteSpace: 'nowrap' }}>
-              ⚡ {combo.match_score || '98% Match'}
-            </span>
-            <span style={{ background: '#f43f5e20', color: '#f43f5e', border: '1px solid #f43f5e40', padding: '3px 8px', borderRadius: '99px', fontSize: '10.5px', fontWeight: '700', whiteSpace: 'nowrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap', minWidth: 0, flex: '1 1 auto' }}>
+            {combo.is_sponsored ? (
+              <span style={{ background: '#f59e0b22', color: '#f59e0b', border: '1px solid #f59e0b55', padding: '3px 8px', borderRadius: '99px', fontSize: '10px', fontWeight: '800', whiteSpace: 'nowrap' }}>
+                ★ SPONSORED
+              </span>
+            ) : (
+              <span style={{ background: '#10b98120', color: '#10b981', border: '1px solid #10b98140', padding: '3px 8px', borderRadius: '99px', fontSize: '10px', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                ⚡ {combo.match_score || '98% Match'}
+              </span>
+            )}
+            <span style={{ background: '#f43f5e20', color: '#f43f5e', border: '1px solid #f43f5e40', padding: '3px 8px', borderRadius: '99px', fontSize: '10px', fontWeight: '700', whiteSpace: 'nowrap' }}>
               {combo.ensemble_type || 'Complete Look'}
             </span>
             {combo.total_price_range && (
-              <span style={{ background: t.inner, color: t.text, padding: '3px 8px', borderRadius: '99px', fontSize: '10.5px', fontWeight: '600', border: `1px solid ${t.border}`, whiteSpace: 'nowrap' }}>
+              <span style={{ background: t.inner, color: t.text, padding: '3px 8px', borderRadius: '99px', fontSize: '10px', fontWeight: '600', border: `1px solid ${t.border}`, whiteSpace: 'nowrap' }}>
                 Est: {combo.total_price_range}
               </span>
             )}
@@ -590,7 +593,7 @@ STRICT QUALITY & COLOR CONSTRAINTS:
             <button
               className="pill-btn"
               onClick={() => shareComboToSocial(combo)}
-              style={{ background: t.inner, color: t.text, border: `1px solid ${t.border}`, padding: '4px 8px', borderRadius: '99px', cursor: 'pointer', fontWeight: '700', fontSize: '11px', whiteSpace: 'nowrap' }}
+              style={{ background: t.inner, color: t.text, border: `1px solid ${t.border}`, padding: '5px 8px', borderRadius: '99px', cursor: 'pointer', fontWeight: '700', fontSize: '11px', whiteSpace: 'nowrap' }}
               title="Share Look on WhatsApp"
             >
               ↗ Share
@@ -598,14 +601,14 @@ STRICT QUALITY & COLOR CONSTRAINTS:
             <button
               className="pill-btn"
               onClick={() => toggleSaveLook(combo)}
-              style={{ background: saved ? '#f43f5e' : t.inner, color: saved ? '#fff' : t.text, border: `1px solid ${saved ? '#f43f5e' : t.border}`, padding: '4px 9px', borderRadius: '99px', cursor: 'pointer', fontWeight: '700', fontSize: '11px', whiteSpace: 'nowrap' }}
+              style={{ background: saved ? '#f43f5e' : t.inner, color: saved ? '#fff' : t.text, border: `1px solid ${saved ? '#f43f5e' : t.border}`, padding: '5px 8px', borderRadius: '99px', cursor: 'pointer', fontWeight: '700', fontSize: '11px', whiteSpace: 'nowrap' }}
             >
               {saved ? '❤️ Saved' : '🤍 Save'}
             </button>
           </div>
         </div>
 
-        {/* Title, Tip & Try On Button */}
+        {/* Title & Try On Button */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px', paddingBottom: '10px', borderBottom: `1px solid ${t.border}` }}>
           <div style={{ flex: '1 1 180px', minWidth: '0' }}>
             <h3 style={{ margin: '0 0 2px 0', fontSize: '16.5px', fontWeight: '800', color: t.text, letterSpacing: '-0.3px', wordBreak: 'break-word' }}>
@@ -621,22 +624,21 @@ STRICT QUALITY & COLOR CONSTRAINTS:
           <button
             className="pill-btn"
             onClick={() => openAiAppChooser(combo)}
-            style={{ background: 'linear-gradient(135deg, #f43f5e 0%, #9333ea 100%)', color: '#ffffff', border: 'none', padding: '8px 13px', borderRadius: '99px', cursor: 'pointer', fontWeight: '700', fontSize: '11.5px', boxShadow: '0 4px 15px rgba(244,63,94,0.3)', whiteSpace: 'nowrap', flexShrink: 0 }}
+            style={{ background: 'linear-gradient(135deg, #f43f5e 0%, #9333ea 100%)', color: '#ffffff', border: 'none', padding: '8px 12px', borderRadius: '99px', cursor: 'pointer', fontWeight: '700', fontSize: '11.5px', boxShadow: '0 4px 15px rgba(244,63,94,0.3)', whiteSpace: 'nowrap', flexShrink: 0 }}
           >
             👤 Try On Model
           </button>
         </div>
 
-        {/* 4-Item Responsive Grid */}
+        {/* 4-Item Fluid Grid */}
         <div className="outfit-grid">
           {(combo.items || []).map((item, itemIdx) => (
             <div
               key={itemIdx}
               className="outfit-card-item"
-              style={{ background: t.inner, border: `1px solid ${t.border}`, borderRadius: '12px', padding: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minWidth: 0 }}
+              style={{ background: t.inner, border: `1px solid ${t.border}`, borderRadius: '12px', padding: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
             >
               <div style={{ width: '100%', minWidth: 0 }}>
-                {/* Slot Label & Color */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px', gap: '2px', width: '100%' }}>
                   <span style={{ color: '#f43f5e', fontWeight: '800', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {item.part}
@@ -646,7 +648,6 @@ STRICT QUALITY & COLOR CONSTRAINTS:
                   </span>
                 </div>
 
-                {/* White Image Box */}
                 <div style={{ background: '#ffffff', borderRadius: '8px', padding: '4px', marginBottom: '6px', height: '135px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                   <img
                     src={item.image}
@@ -660,7 +661,6 @@ STRICT QUALITY & COLOR CONSTRAINTS:
                   />
                 </div>
 
-                {/* Item Name */}
                 <p style={{ margin: '0 0 2px 0', fontWeight: '600', fontSize: '11px', color: t.text, lineHeight: '1.25', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word', minHeight: '26px' }}>
                   {item.name}
                 </p>
@@ -669,20 +669,20 @@ STRICT QUALITY & COLOR CONSTRAINTS:
                 </p>
               </div>
 
-              {/* Store Buttons */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '3px', width: '100%' }}>
-                <a href={formatAffiliateLink(item.buy_link)} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', minWidth: 0 }}>
-                  <button style={{ width: '100%', background: '#f59e0b', color: '#09090b', border: 'none', padding: '5px 1px', cursor: 'pointer', borderRadius: '5px', fontWeight: '800', fontSize: '9.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {/* 1-Tap Cuelinks Monetized Store Buttons */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '3px', width: '100%' }}>
+                <a href={formatAffiliateLink(item.buy_link)} target="_blank" rel="noopener noreferrer sponsored" style={{ textDecoration: 'none', minWidth: 0 }}>
+                  <button style={{ width: '100%', background: '#f59e0b', color: '#09090b', border: 'none', padding: '6px 0', cursor: 'pointer', borderRadius: '5px', fontWeight: '800', fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     Amazon
                   </button>
                 </a>
-                <a href={formatAffiliateLink(item.myntra_link)} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', minWidth: 0 }}>
-                  <button style={{ width: '100%', background: t.card, color: t.text, border: `1px solid ${t.border}`, padding: '5px 1px', cursor: 'pointer', borderRadius: '5px', fontWeight: '600', fontSize: '9.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <a href={formatAffiliateLink(item.myntra_link)} target="_blank" rel="noopener noreferrer sponsored" style={{ textDecoration: 'none', minWidth: 0 }}>
+                  <button style={{ width: '100%', background: t.card, color: t.text, border: `1px solid ${t.border}`, padding: '6px 0', cursor: 'pointer', borderRadius: '5px', fontWeight: '600', fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     Myntra
                   </button>
                 </a>
-                <a href={formatAffiliateLink(item.ajio_link)} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', minWidth: 0 }}>
-                  <button style={{ width: '100%', background: t.card, color: t.text, border: `1px solid ${t.border}`, padding: '5px 1px', cursor: 'pointer', borderRadius: '5px', fontWeight: '600', fontSize: '9.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <a href={formatAffiliateLink(item.ajio_link)} target="_blank" rel="noopener noreferrer sponsored" style={{ textDecoration: 'none', minWidth: 0 }}>
+                  <button style={{ width: '100%', background: t.card, color: t.text, border: `1px solid ${t.border}`, padding: '6px 0', cursor: 'pointer', borderRadius: '5px', fontWeight: '600', fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     Ajio
                   </button>
                 </a>
@@ -695,67 +695,35 @@ STRICT QUALITY & COLOR CONSTRAINTS:
   }
 
   // ============================================================================
-  // BULLETPROOF RESPONSIVE CSS INJECTIONS
+  // CSS STYLES
   // ============================================================================
   const styles = `
-    * {
-      box-sizing: border-box !important;
-      -webkit-tap-highlight-color: transparent;
-    }
-    body {
-      margin: 0;
-      padding: 0;
-      width: 100vw;
-      max-width: 100%;
-      overflow-x: hidden;
-      background: ${t.bg};
-      color: ${t.text};
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      transition: background 0.2s, color 0.2s;
-    }
-    ::-webkit-scrollbar { width: 4px; height: 4px; }
-    ::-webkit-scrollbar-track { background: ${t.bg}; }
-    ::-webkit-scrollbar-thumb { background: ${t.border}; border-radius: 99px; }
+    * { box-sizing: border-box !important; -webkit-tap-highlight-color: transparent; }
+    body, html { margin: 0; padding: 0; width: 100%; overflow-x: hidden; background: ${t.bg}; color: ${t.text}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; transition: background 0.2s, color 0.2s; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; display: none; }
     .pill-btn { transition: transform 0.12s ease; }
     .pill-btn:active { transform: scale(0.95); }
+    .hide-scroll { -webkit-overflow-scrolling: touch; scrollbar-width: none; }
     .hide-scroll::-webkit-scrollbar { display: none; }
-
-    /* Fluid Multi-Device Grid: 4 items on desktop/tablet, 2 on smartphone */
-    .outfit-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 8px;
-      width: 100%;
-    }
-    .outfit-card-item {
-      min-width: 0;
-      overflow: hidden;
-    }
-
+    
+    .outfit-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; width: 100%; }
+    .outfit-card-item { min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
+    
     @media (max-width: 768px) {
-      .outfit-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-        gap: 8px !important;
-      }
-    }
-
-    @media (max-width: 350px) {
-      .outfit-grid {
-        grid-template-columns: 1fr !important;
-      }
+      .outfit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 6px !important; }
     }
   `
 
   // ============================================================================
-  // SCREEN 1: ONBOARDING QUIZ (NO LOGIN REQUIRED)
+  // SCREEN 1: ONBOARDING
   // ============================================================================
   if (!profile) {
     return (
       <div style={{ minHeight: '100vh', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: t.bg }}>
         <style>{styles}</style>
-        <div style={{ maxWidth: '420px', width: '100%', background: t.card, padding: '22px', borderRadius: '22px', border: `1px solid ${t.border}`, boxShadow: '0 20px 50px rgba(0,0,0,0.15)' }}>
+        <div style={{ maxWidth: '420px', width: '100%', background: t.card, padding: '24px', borderRadius: '24px', border: `1px solid ${t.border}`, boxShadow: '0 20px 50px rgba(0,0,0,0.15)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <span style={{ background: '#f43f5e20', color: '#f43f5e', padding: '3px 9px', borderRadius: '99px', fontSize: '11px', fontWeight: '700' }}>
+            <span style={{ background: '#f43f5e20', color: '#f43f5e', padding: '4px 10px', borderRadius: '99px', fontSize: '11px', fontWeight: '700' }}>
               ✨ AI STYLIST • INDIA
             </span>
             <button onClick={toggleTheme} style={{ background: t.inner, border: `1px solid ${t.border}`, color: t.text, padding: '5px 10px', borderRadius: '99px', fontSize: '11px', cursor: 'pointer', fontWeight: '700' }}>
@@ -763,13 +731,13 @@ STRICT QUALITY & COLOR CONSTRAINTS:
             </button>
           </div>
 
-          <h2 style={{ margin: '6px 0 4px 0', fontSize: '21px', fontWeight: '800', color: t.text }}>Find Your Signature Look</h2>
-          <p style={{ color: t.muted, fontSize: '12.5px', margin: '0 0 16px 0' }}>
-            Sarees, Kurta Sets, Dresses & Combos tailored to your skin tone & budget.
+          <h2 style={{ margin: '6px 0 4px 0', fontSize: '22px', fontWeight: '800', color: t.text }}>Find Your Signature Look</h2>
+          <p style={{ color: t.muted, fontSize: '13px', margin: '0 0 18px 0' }}>
+            Sarees, Kurta Sets, Dresses & Combos matched to your exact tone and budget.
           </p>
 
-          <label style={{ fontSize: '11.5px', color: t.muted, fontWeight: '600' }}>Gender</label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', margin: '5px 0 14px 0' }}>
+          <label style={{ fontSize: '12px', color: t.muted, fontWeight: '600' }}>Select Gender</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', margin: '6px 0 14px 0' }}>
             {['Women', 'Men'].map(g => (
               <button
                 key={g}
@@ -781,8 +749,8 @@ STRICT QUALITY & COLOR CONSTRAINTS:
             ))}
           </div>
 
-          <label style={{ fontSize: '11.5px', color: t.muted, fontWeight: '600' }}>Skin Undertone</label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', margin: '5px 0 14px 0' }}>
+          <label style={{ fontSize: '12px', color: t.muted, fontWeight: '600' }}>Skin Undertone</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', margin: '6px 0 14px 0' }}>
             {[
               { name: 'Fair', swatch: '#f5d0b5' },
               { name: 'Wheatish', swatch: '#d8a47f' },
@@ -800,10 +768,10 @@ STRICT QUALITY & COLOR CONSTRAINTS:
             ))}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '18px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '20px' }}>
             <div>
-              <label style={{ fontSize: '11.5px', color: t.muted, fontWeight: '600' }}>Body Frame</label>
-              <select style={{ width: '100%', padding: '10px', marginTop: '4px', borderRadius: '10px', background: t.inner, color: t.text, border: `1px solid ${t.border}`, fontSize: '12px' }} value={bodyType} onChange={(e) => setBodyType(e.target.value)}>
+              <label style={{ fontSize: '12px', color: t.muted, fontWeight: '600' }}>Body Frame</label>
+              <select style={{ width: '100%', padding: '10px', marginTop: '4px', borderRadius: '10px', background: t.inner, color: t.text, border: `1px solid ${t.border}`, fontSize: '12.5px' }} value={bodyType} onChange={(e) => setBodyType(e.target.value)}>
                 <option>Average</option>
                 <option>Slim</option>
                 <option>Broad / Athletic</option>
@@ -811,8 +779,8 @@ STRICT QUALITY & COLOR CONSTRAINTS:
               </select>
             </div>
             <div>
-              <label style={{ fontSize: '11.5px', color: t.muted, fontWeight: '600' }}>Height</label>
-              <select style={{ width: '100%', padding: '10px', marginTop: '4px', borderRadius: '10px', background: t.inner, color: t.text, border: `1px solid ${t.border}`, fontSize: '12px' }} value={height} onChange={(e) => setHeight(e.target.value)}>
+              <label style={{ fontSize: '12px', color: t.muted, fontWeight: '600' }}>Height</label>
+              <select style={{ width: '100%', padding: '10px', marginTop: '4px', borderRadius: '10px', background: t.inner, color: t.text, border: `1px solid ${t.border}`, fontSize: '12.5px' }} value={height} onChange={(e) => setHeight(e.target.value)}>
                 <option>5'2"</option>
                 <option>5'4"</option>
                 <option>5'6"</option>
@@ -825,10 +793,10 @@ STRICT QUALITY & COLOR CONSTRAINTS:
 
           <button
             className="pill-btn"
-            style={{ width: '100%', padding: '13px', background: 'linear-gradient(90deg, #f43f5e, #db2777)', color: 'white', border: 'none', cursor: 'pointer', borderRadius: '12px', fontWeight: '800', fontSize: '14.5px' }}
+            style={{ width: '100%', padding: '14px', background: 'linear-gradient(90deg, #f43f5e, #db2777)', color: 'white', border: 'none', cursor: 'pointer', borderRadius: '12px', fontWeight: '800', fontSize: '15px' }}
             onClick={saveProfile}
           >
-            Start Styling →
+            Start Styling Swipe Deck →
           </button>
         </div>
       </div>
@@ -839,12 +807,28 @@ STRICT QUALITY & COLOR CONSTRAINTS:
   // SCREEN 2: MAIN DASHBOARD & SWIPE DECK
   // ============================================================================
   return (
-    <div style={{ width: '100%', maxWidth: '820px', margin: '0 auto', padding: '8px 10px 100px 10px', minHeight: '100vh', background: t.bg, color: t.text, overflowX: 'hidden' }}>
+    <div style={{ width: '100%', maxWidth: '820px', margin: '0 auto', padding: '8px 10px 120px 10px', minHeight: '100vh', background: t.bg, color: t.text }}>
       <style>{styles}</style>
 
-      {/* Dopamine Heart Animation Overlay */}
+      {/* Structured JSON-LD Schema for Automated AEO/GEO/SEO */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          "name": `Best ${occasion} Outfit Ideas for ${profile.skinTone} Skin Under ₹${budget}`,
+          "description": `AI curated Indian fashion combinations including Sarees, Kurta Sets, and Dresses for ${occasion}.`,
+          "itemListElement": combos.map((c, i) => ({
+            "@type": "ListItem",
+            "position": i + 1,
+            "name": c.look_name,
+            "description": c.style_tip
+          }))
+        })}
+      </script>
+
+      {/* Heart Popup Feedback */}
       {showHeartPopup && (
-        <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '64px', pointerEvents: 'none', zIndex: 10000, animation: 'heartPop 0.8s ease-out forwards' }}>
+        <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '72px', pointerEvents: 'none', zIndex: 10000, animation: 'heartPop 0.8s ease-out forwards' }}>
           ❤️
         </div>
       )}
@@ -854,7 +838,7 @@ STRICT QUALITY & COLOR CONSTRAINTS:
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: t.card, backdropFilter: 'blur(10px)', borderRadius: '14px', border: `1px solid ${t.border}`, marginBottom: '10px', position: 'sticky', top: '4px', zIndex: 50, gap: '6px', width: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
           <span style={{ fontWeight: '900', fontSize: '16px', color: '#f43f5e', whiteSpace: 'nowrap' }}>StyleAI</span>
-          <button onClick={resetProfile} style={{ background: t.inner, color: t.muted, border: `1px solid ${t.border}`, padding: '4px 7px', borderRadius: '99px', fontSize: '10.5px', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>
+          <button onClick={resetProfile} style={{ background: t.inner, color: t.muted, border: `1px solid ${t.border}`, padding: '4px 7px', borderRadius: '99px', fontSize: '10.5px', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '130px' }}>
             {profile.gender} • {profile.skinTone} ✎
           </button>
         </div>
@@ -960,7 +944,6 @@ STRICT QUALITY & COLOR CONSTRAINTS:
       {/* SWIPE DECK VIEW */}
       {!loading && viewMode === 'swipe' && combos.length > 0 && (
         <div style={{ width: '100%' }}>
-          {/* Progress Indicators */}
           <div style={{ display: 'flex', gap: '3px', marginBottom: '8px', width: '100%' }}>
             {combos.map((_, i) => (
               <div
@@ -980,8 +963,8 @@ STRICT QUALITY & COLOR CONSTRAINTS:
 
           {renderOutfitCard(combos[activeIndex] || combos[0], activeIndex, true)}
 
-          {/* Floating Action Dock (Positioned above home bar with safe spacing) */}
-          <div style={{ position: 'fixed', bottom: '12px', left: '50%', transform: 'translateX(-50%)', background: theme === 'dark' ? 'rgba(20, 20, 25, 0.94)' : 'rgba(255, 255, 255, 0.94)', backdropFilter: 'blur(12px)', border: `1px solid ${t.border}`, borderRadius: '99px', padding: '5px 10px', display: 'flex', alignItems: 'center', gap: '6px', zIndex: 60, boxShadow: '0 10px 30px rgba(0,0,0,0.35)', maxWidth: '90vw' }}>
+          {/* Floating Action Dock */}
+          <div style={{ position: 'fixed', bottom: '16px', left: '50%', transform: 'translateX(-50%)', background: theme === 'dark' ? 'rgba(20, 20, 25, 0.94)' : 'rgba(255, 255, 255, 0.94)', backdropFilter: 'blur(12px)', border: `1px solid ${t.border}`, borderRadius: '99px', padding: '5px 10px', display: 'flex', alignItems: 'center', gap: '6px', zIndex: 60, boxShadow: '0 10px 30px rgba(0,0,0,0.35)', maxWidth: '90vw' }}>
             <button className="pill-btn" onClick={() => handleSwipeCard('prev')} style={{ background: t.inner, color: t.text, border: `1px solid ${t.border}`, padding: '7px 11px', borderRadius: '99px', cursor: 'pointer', fontWeight: '700', fontSize: '11px', whiteSpace: 'nowrap' }}>
               ← Prev
             </button>
@@ -1114,7 +1097,7 @@ STRICT QUALITY & COLOR CONSTRAINTS:
                 { id: 'grok', label: 'Grok', bg: '#27272a' },
                 { id: 'copilot', label: 'Copilot', bg: '#7c3aed' }
               ].map(app => (
-                <button key={app.id} className="pill-btn" onClick={() => launchAiApp(app.id)} style={{ background: app.bg, color: '#fff', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 4px', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '11px' }}>
+                <button key={app.id} className="pill-btn" onClick={() => launchAiApp(app.id)} style={{ background: app.bg, color: '#fff', border: 'none', padding: '8px 4px', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '11px' }}>
                   {app.label} ↗
                 </button>
               ))}
