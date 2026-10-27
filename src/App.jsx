@@ -49,7 +49,6 @@ function App() {
   const formatAffiliateLink = (url) => {
     if (!url) return '#'
     if (!CUELINKS_CID) return url
-    // Uses Cuelinks official LinkKit redirect engine (with cid & subid tracking)
     return `https://linksredirect.com/?cid=${CUELINKS_CID}&source=linkkit&subid=styleai_${encodeURIComponent(occasion.toLowerCase().replace(/[^a-z0-9]/g, ''))}&url=${encodeURIComponent(url)}`
   }
 
