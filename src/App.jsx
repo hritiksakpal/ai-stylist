@@ -44,7 +44,7 @@ function App() {
   const WORKER_URL = "https://aistylist.hritik-sk01.workers.dev"
 
   // Cuelinks Publisher ID wrapper
-  const CUELINKS_PUB_ID = "330837"
+  const CUELINKS_PUB_ID = "332270"
 
   const formatAffiliateLink = (url) => {
     if (!url) return '#'
